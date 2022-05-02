@@ -4,50 +4,65 @@ import numpy as np
 
 class Beadando:
     def __init__(self):
-        self.img = cv2.imread("crosswalk.jpg", -1)
-        self.contour_val = 500
-        # self.img = cv2.resize(self.img, (800, 800))
+        input = cv2.imread('3.png')
 
-    def thresh(self):
-        _, self.thresh_gray = cv2.threshold(cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY),
-                                         150, 255, cv2.THRESH_BINARY)
-        cv2.imshow('nev', self.thresh_gray)
+        # resize the image if its too big
+        self.size(input)
 
-    def contouring(self):
-        self.contours, _ = cv2.findContours(self.thresh_gray,
-                                          cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        self.contours_combined = []
 
-    def segment_large_objects(self):
-        for c in self.contours:
-            # if the contour is not sufficiently large, ignore it
-            if cv2.contourArea(c) < self.contour_val:
-                continue
+    def size(self, input):
+        # print("input shapes \n" + str(input.shape[0]) + " height \n" + str(input.shape[1]) + " width")
 
-            # get the min area rect
-            rect = cv2.minAreaRect(c)
-            box = cv2.boxPoints(rect)
-            # convert all coordinates floating point values to int
-            box = np.int0(box)
-            # draw a red 'nghien' rectangle
-            cv2.drawContours(self.img, [box], 0, (0, 0, 255), 2)
-            cv2.imshow('img', self.img)
+        if input.shape[0] > 1000 or input.shape[1] > 1000:
+            scale_percent = 60  # percent of original size
+            width = int(input.shape[1] * scale_percent / 100)
+            height = int(input.shape[0] * scale_percent / 100)
+            dim = (width, height)
+        else:
+            dim = (input.shape[1], input.shape[0])
+        # print(dim)
 
-    def save_img(self):
-        cv2.imwrite("result.jpg", self.img)
+        self.img = cv2.resize(input, dim, interpolation=cv2.INTER_AREA)
+
+    def filter(self):
+        _, self.thresh = cv2.threshold(cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY),
+                                            140, 255, cv2.THRESH_BINARY)
+
+        kernel = np.ones((3, 3), np.uint8)
+        morph = cv2.morphologyEx(self.thresh, cv2.MORPH_OPEN, kernel)
+        kernel = np.ones((5, 5), np.uint8)
+        morph = cv2.morphologyEx(morph, cv2.MORPH_CLOSE, kernel)
+        return morph
+
+    def filter_by_area(self, morph):
+        cntrs = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cntrs = cntrs[0] if len(cntrs) == 2 else cntrs[1]
+        self.contours = self.img.copy()
+        good_contours = []
+        for c in cntrs:
+            area = cv2.contourArea(c)
+            if area > 800:
+                cv2.drawContours(self.contours, [c], -1, (0, 0, 255), thickness=cv2.FILLED)
+                good_contours.append(c)
+
+        # combine good contours
+        self.contours_combined = np.vstack(good_contours)
+
+        return self.contours_combined
+
+    def s_and_s(self):
+        cv2.imwrite("eredmeny.jpg", self.contours)
+
+        cv2.imshow("Eredmeny", self.contours)
 
     def run(self):
-        self.thresh()
-        self.contouring()
-        self.segment_large_objects()
-        # self.save_img()
+        self.filter_by_area(self.filter())
+        self.s_and_s()
 
-        while True:
-            key = cv2.waitKey(1)
-            if key == 27:  # q
-                break
-        cv2.destroyAllWindows()
+        cv2.waitKey(0)
 
 
-if __name__ == '__main__':
-    beadando = Beadando()
-    beadando.run()
+if __name__ == "__main__":
+    bead = Beadando()
+    bead.run()
