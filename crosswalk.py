@@ -35,6 +35,7 @@ class Beadando:
 
         kernel = np.ones((3, 3), np.uint8)
         morph = cv2.morphologyEx(self.thresh, cv2.MORPH_OPEN, kernel)
+        # a 2. blur nélkül pontatlanabb a színek detektálása
         kernel = np.ones((5, 5), np.uint8)
         morph = cv2.morphologyEx(morph, cv2.MORPH_CLOSE, kernel)
         return morph
